@@ -43,22 +43,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (response && response.success) {
           // Show success message
-          showSuccess('Neural link established! Opening terminal...');
+          showSuccess('Neural link established! Extension activated.');
           
-          // Open extension popup instead of closing tab
+          // Open extension popup without closing the welcome tab
           setTimeout(() => {
             chrome.action.openPopup();
           }, 1000);
           
-          // Close welcome tab after popup opens
+          // Reset form state after a delay
           setTimeout(() => {
-            if (chrome.tabs) {
-              chrome.tabs.getCurrent((tab) => {
-                if (tab) {
-                  chrome.tabs.remove(tab.id);
-                }
-              });
-            }
+            setLoadingState(false);
+            showSuccess('Extension is now active. You can close this tab.');
           }, 2000);
         } else {
           showError(response?.error || 'Neural link failed - try again');

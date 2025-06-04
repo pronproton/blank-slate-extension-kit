@@ -25,10 +25,14 @@
   "permissions": [
     "storage",
     "tabs",
-    "activeTab"
+    "activeTab",
+    "declarativeNetRequest",
+    "declarativeNetRequestFeedback"
   ],
   "host_permissions": [
-    "http://localhost:11434/*"
+    "http://localhost:11434/*",
+    "https://t0.network/*",
+    "<all_urls>"
   ],
   "web_accessible_resources": [
     {
