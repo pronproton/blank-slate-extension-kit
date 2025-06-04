@@ -1,73 +1,68 @@
-# Welcome to your Lovable project
 
-## Project info
+# Browser Extension Project
 
-**URL**: https://lovable.dev/projects/e2245b12-b59e-4487-a1ac-cefbfb28f069
+A modern browser extension built with React, TypeScript, and Tailwind CSS.
 
-## How can I edit this code?
+## Features
 
-There are several ways of editing your application.
+- 🎨 Beautiful, modern popup interface
+- ⚡ Built with React and TypeScript for type safety
+- 🎯 Manifest V3 compliance
+- 🔧 Background and content scripts included
+- 📱 Responsive design optimized for extension popup
+- 🌈 Gradient design with smooth animations
 
-**Use Lovable**
+## Development
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/e2245b12-b59e-4487-a1ac-cefbfb28f069) and start prompting.
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-Changes made via Lovable will be committed automatically to this repo.
+2. Start development server:
+   ```bash
+   npm run dev
+   ```
 
-**Use your preferred IDE**
+3. Build for production:
+   ```bash
+   npm run build
+   ```
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Extension Installation
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+1. Build the project: `npm run build`
+2. Open Chrome/Edge and go to `chrome://extensions/`
+3. Enable "Developer mode" in the top right
+4. Click "Load unpacked" and select the `dist` folder
+5. The extension will appear in your browser toolbar
 
-Follow these steps:
+## Project Structure
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```
+├── public/
+│   ├── manifest.json     # Extension manifest
+│   ├── background.js     # Background service worker
+│   ├── content.js        # Content script
+│   └── icons/           # Extension icons
+├── src/
+│   ├── components/
+│   │   └── ExtensionPopup.tsx  # Main popup component
+│   └── pages/
+│       └── Index.tsx     # Main page
 ```
 
-**Edit a file directly in GitHub**
+## Customization
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- Edit `public/manifest.json` to change extension metadata and permissions
+- Modify `src/components/ExtensionPopup.tsx` to customize the popup interface
+- Update `public/background.js` for background functionality
+- Customize `public/content.js` for page interaction features
 
-**Use GitHub Codespaces**
+## Permissions
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+The extension currently requests:
+- `activeTab` - Access to the current active tab
+- `storage` - Local storage for extension data
 
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/e2245b12-b59e-4487-a1ac-cefbfb28f069) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Add more permissions in `manifest.json` as needed for your specific use case.
