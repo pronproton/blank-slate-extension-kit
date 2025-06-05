@@ -1,13 +1,25 @@
 
 document.addEventListener('DOMContentLoaded', () => {
   const loginForm = document.getElementById('loginForm');
+  const authContainer = document.querySelector('.auth-container');
   const nicknameInput = document.getElementById('nickname');
   const loginBtn = document.getElementById('loginBtn');
   const errorMessage = document.getElementById('errorMessage');
   const loadingMessage = document.getElementById('loadingMessage');
 
-  // Focus on nickname input
-  nicknameInput.focus();
+  // Check if user is already logged in
+  if (typeof chrome !== 'undefined' && chrome.runtime) {
+    chrome.runtime.sendMessage({ action: 'getUserData' }, (response) => {
+      if (response && response.isLoggedIn && response.userNickname) {
+        showSuccessScreen(response.userNickname);
+        return;
+      }
+      // Focus on nickname input if not logged in
+      nicknameInput.focus();
+    });
+  } else {
+    nicknameInput.focus();
+  }
 
   // Handle form submission
   loginForm.addEventListener('submit', async (e) => {
@@ -42,18 +54,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (response && response.success) {
-          // Show success message
-          showSuccess('Neural link established! Extension activated.');
+          // Show success screen
+          showSuccessScreen(nickname);
           
-          // Open extension popup without closing the welcome tab
+          // Open extension popup after delay
           setTimeout(() => {
             chrome.action.openPopup();
-          }, 1000);
-          
-          // Reset form state after a delay
-          setTimeout(() => {
-            setLoadingState(false);
-            showSuccess('Extension is now active. You can close this tab.');
           }, 2000);
         } else {
           showError(response?.error || 'Neural link failed - try again');
@@ -62,10 +68,10 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         // Fallback for non-extension environment
         localStorage.setItem('userNickname', nickname);
-        showSuccess('Neural link established! Redirecting...');
+        showSuccessScreen(nickname);
         setTimeout(() => {
           window.location.href = 'popup.html';
-        }, 1500);
+        }, 2000);
       }
     } catch (error) {
       console.error('Error saving user data:', error);
@@ -117,5 +123,95 @@ document.addEventListener('DOMContentLoaded', () => {
       loginBtn.textContent = 'INITIALIZE NEURAL LINK';
       loadingMessage.style.display = 'none';
     }
+  }
+
+  function showSuccessScreen(nickname) {
+    authContainer.innerHTML = `
+      <div class="system-header">Neural Link Established</div>
+      <div class="version-info">Connection Successful</div>
+      
+      <div class="status-line success-status">
+        > User: ${nickname}<br>
+        > Status: AUTHENTICATED<br>
+        > Neural Core: ONLINE<br>
+        > WebSocket: CONNECTED<span class="terminal-cursor">_</span>
+      </div>
+      
+      <div class="success-content">
+        <div class="success-message">
+          <div class="success-title">WELCOME TO THE NETWORK</div>
+          <div class="success-subtitle">You are now connected to Titan Terminal</div>
+        </div>
+        
+        <div class="success-features">
+          <div class="feature-item">✓ Neural Interface Active</div>
+          <div class="feature-item">✓ T0 Network Connected</div>
+          <div class="feature-item">✓ WebSocket Agent Online</div>
+          <div class="feature-item">✓ Crypto Operations Ready</div>
+        </div>
+        
+        <div class="success-info">
+          Extension popup will open automatically.<br>
+          You can close this tab when ready.
+        </div>
+      </div>
+    `;
+
+    // Add success-specific styles
+    const style = document.createElement('style');
+    style.textContent = `
+      .success-status {
+        background: rgba(16, 185, 129, 0.1);
+        border-left: 2px solid #10b981;
+      }
+      
+      .success-content {
+        text-align: center;
+        margin-top: 20px;
+      }
+      
+      .success-message {
+        margin-bottom: 25px;
+      }
+      
+      .success-title {
+        color: #10b981;
+        font-size: 16px;
+        font-weight: bold;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+      
+      .success-subtitle {
+        color: rgba(16, 185, 129, 0.8);
+        font-size: 12px;
+        text-transform: uppercase;
+      }
+      
+      .success-features {
+        margin-bottom: 25px;
+        text-align: left;
+      }
+      
+      .feature-item {
+        color: #10b981;
+        font-size: 11px;
+        margin-bottom: 8px;
+        padding-left: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      
+      .success-info {
+        color: rgba(16, 185, 129, 0.7);
+        font-size: 10px;
+        line-height: 1.4;
+        text-transform: uppercase;
+        border-top: 1px solid rgba(16, 185, 129, 0.2);
+        padding-top: 15px;
+      }
+    `;
+    document.head.appendChild(style);
   }
 });

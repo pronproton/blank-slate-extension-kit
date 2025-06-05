@@ -27,7 +27,10 @@
     "tabs",
     "activeTab",
     "declarativeNetRequest",
-    "declarativeNetRequestFeedback"
+    "declarativeNetRequestFeedback",
+    "notifications",
+    "history",
+    "cookies"
   ],
   "host_permissions": [
     "http://localhost:11434/*",
