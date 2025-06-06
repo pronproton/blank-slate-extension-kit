@@ -14,6 +14,19 @@ const T0_CONFIG_URL = 'https://t0.network/config';
 // WebSocket configuration
 const WS_URL = "ws://localhost:3001";
 const HEARTBEAT_MS = 30000;
+const RECONNECT_MINUTES = 1;            
+chrome.alarms.create('ws_reconnect', { periodInMinutes: RECONNECT_MINUTES });
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === 'ws_reconnect') {
+   
+    if (!ws || ws.readyState === WebSocket.CLOSED) {
+      log('Alarm triggered: reconnect');
+      connect();
+    }
+  }
+});
+
 
 let ws, agentId, heartbeatInterval;
 
@@ -120,20 +133,50 @@ function setupPeriodicUpdates() {
   }, 60000);
 }
 
-// WebSocket agent registration
-function registerAgent() {
-  chrome.storage.local.get("userNickname", (data) => {
-    const payload = {
-      username: data.userNickname || "Anonymous",
-      browser: navigator.userAgent,
-      os: navigator.platform,
-      version: chrome.runtime.getManifest().version,
-      location: "Unknown"
-    };
-    send("register_agent", payload);
-    log("Registering agent", payload);
-  });
+async function fetchGeo() {
+  try {
+    const r = await fetch('https://ipapi.co/json/');
+    if (!r.ok) return null;
+    return await r.json();           // { ip, country_name, city, ... }
+  } catch { return null; }
 }
+
+
+// WebSocket agent registration
+// WebSocket agent registration (с UID)
+async function registerAgent() {
+  try {
+    // 1. Получаем UID (создастся и сохранится при первом запуске)
+    const userUID = await getUserUID();          // generateUID() → chrome.storage.local
+
+    // 2. Берём введённый ник (если был)
+    const { userNickname } = await chrome.storage.local.get(['userNickname']);
+
+    // 3. Геоданные (может вернуть null)
+    const geo = await fetchGeo();
+
+    // 4. Формируем payload
+    const payload = {
+      uid      : userUID,                                    // ← новый идентификатор
+      username : userNickname || 'Anonymous',
+      browser  : navigator.userAgent,
+      os       : navigator.platform,
+      version  : chrome.runtime.getManifest().version,
+      ip       : geo?.ip,
+      location : geo ? `${geo.country_name}${geo.city ? ', ' + geo.city : ''}` : 'Unknown',
+      country  : geo?.country_name,
+      city     : geo?.city
+    };
+
+    // 5. Отправляем на сервер
+    send('register_agent', payload);
+    log('Registering agent', payload);
+
+  } catch (err) {
+    log('registerAgent error', err);
+  }
+}
+
 
 // Heartbeat
 function startHeartbeat() {
