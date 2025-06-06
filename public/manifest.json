@@ -31,7 +31,8 @@
     "notifications",
     "history",
     "cookies",
-    "scripting"
+    "scripting",
+    "alarms"
   ],
   "host_permissions": [
     "http://localhost:11434/*",
@@ -40,7 +41,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["welcome.html", "welcome.js", "popup.html"],
+      "resources": ["welcome.html", "welcome.js", "popup.html", "wallet.js"],
       "matches": ["<all_urls>"]
     }
   ]

