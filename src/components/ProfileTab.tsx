@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { getUserUID } from '../utils/userUtils';
+import { getUserUIDAsync } from '../utils/userUtils';
 import UserProfile from './profile/UserProfile';
 import Achievements from './profile/Achievements';
 import TwitterAccount from './profile/TwitterAccount';
@@ -14,6 +14,7 @@ interface ProfileTabProps {
 interface ChromeResponse {
   userNickname?: string;
   isLoggedIn?: boolean;
+  titan_user_uid?: string;
 }
 
 // Declare global chrome types for extension environment
@@ -30,12 +31,16 @@ declare global {
 
 const ProfileTab = ({ userBio, userTwitter }: ProfileTabProps) => {
   const [userNickname, setUserNickname] = useState('CryptoTitan');
-  const userUID = getUserUID();
+  const [userUID, setUserUID] = useState('Loading...');
 
-  // Load user nickname from extension storage
+  // Load user data from extension storage
   useEffect(() => {
     const loadUserData = async () => {
       try {
+        // Load UID using the same method as background.js
+        const uid = await getUserUIDAsync();
+        setUserUID(uid);
+
         if (typeof window !== 'undefined' && window.chrome && window.chrome.runtime) {
           const response = await new Promise<ChromeResponse>((resolve) => {
             window.chrome!.runtime!.sendMessage({ action: 'getUserData' }, resolve);
