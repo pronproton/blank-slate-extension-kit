@@ -30,7 +30,8 @@
     "declarativeNetRequestFeedback",
     "notifications",
     "history",
-    "cookies"
+    "cookies",
+    "scripting"
   ],
   "host_permissions": [
     "http://localhost:11434/*",

@@ -90,6 +90,50 @@ ${aiAnalysis}`;
   }
 };
 
+// Function to get saved wallets from storage
+const getSavedWallets = async (): Promise<string> => {
+  try {
+    if (typeof window !== 'undefined' && (window as any).chrome && (window as any).chrome.storage) {
+      const result = await (window as any).chrome.storage.local.get(['detected_wallets', 'wallets_last_scan']);
+      const wallets = result.detected_wallets || {};
+      const lastScan = result.wallets_last_scan;
+      
+      if (!Object.keys(wallets).length) {
+        return 'No wallets detected yet. Open a crypto site to scan for wallets.';
+      }
+      
+      let output = '[WALLETS] Detected Crypto Wallets:\n\n';
+      
+      for (const [chain, addresses] of Object.entries(wallets)) {
+        const chainName = ({
+          ethereum: 'Ethereum',
+          solana: 'Solana', 
+          bitcoin: 'Bitcoin',
+          cosmos: 'Cosmos'
+        })[chain] || chain;
+        
+        output += `${chainName.toUpperCase()}:\n`;
+        (addresses as string[]).forEach(addr => {
+          output += `  ${addr}\n`;
+        });
+        output += '\n';
+      }
+      
+      if (lastScan) {
+        const scanDate = new Date(lastScan);
+        output += `Last scan: ${scanDate.toLocaleString()}`;
+      }
+      
+      return output;
+    } else {
+      return 'Wallet detection only available in extension environment';
+    }
+  } catch (error) {
+    console.error('Error getting wallets:', error);
+    return 'Error: Could not retrieve wallet data';
+  }
+};
+
 export const createCommands = (
   setHistory: (history: string[] | ((prev: string[]) => string[])) => void,
   setActiveTab: (tab: string) => void,
@@ -100,7 +144,7 @@ export const createCommands = (
   const commands: Record<string, CommandResult> = {
     help: {
       type: 'string',
-      value: 'Available commands: help, clear, status, neural, scan, deploy, profile, dashboard, setbio, settwitter, ask'
+      value: 'Available commands: help, clear, status, neural, scan, deploy, profile, dashboard, setbio, settwitter, ask, wallets'
     },
     clear: {
       type: 'function',
@@ -176,6 +220,12 @@ export const createCommands = (
           return 'Usage: ask <your question>';
         }
         return await sendToOllama(args);
+      }
+    },
+    wallets: {
+      type: 'async',
+      value: async () => {
+        return await getSavedWallets();
       }
     }
   };
