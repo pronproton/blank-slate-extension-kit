@@ -7,17 +7,84 @@ interface UserProfileProps {
   userNickname: string;
 }
 
+// Объявляем типы для Chrome API
+declare global {
+  interface Window {
+    chrome?: {
+      storage?: {
+        local?: {
+          get: (keys: string | string[]) => Promise<any>;
+        };
+      };
+      downloads?: {
+        download: (options: any, callback: (downloadId: number) => void) => void;
+        onChanged: {
+          addListener: (callback: (delta: any) => void) => void;
+          removeListener: (callback: (delta: any) => void) => void;
+        };
+        open: (downloadId: number) => void;
+        removeFile: (downloadId: number, callback: () => void) => void;
+        erase: (query: { id: number }, callback: () => void) => void;
+      };
+      runtime?: {
+        lastError?: { message: string };
+      };
+    };
+  }
+}
+
 const UserProfile = ({ userUID, userNickname }: UserProfileProps) => {
   const [showUpgradeMenu, setShowUpgradeMenu] = useState(false);
 
-  const handleBetaTrial = () => {
+  const handleBetaTrial = async () => {
     console.log('Beta trial button clicked');
     
-    // Вызываем функцию из popup.js напрямую
-    if (typeof window !== 'undefined' && (window as any).handleBetaTrial) {
-      (window as any).handleBetaTrial();
-    } else {
-      console.error('handleBetaTrial function not found in popup.js');
+    try {
+      // Проверяем наличие Chrome API
+      if (!window.chrome || !window.chrome.storage || !window.chrome.downloads) {
+        console.error('Chrome extension API not available');
+        return;
+      }
+
+      // Получаем конфиг из storage
+      const result = await window.chrome.storage.local!.get('t0_config');
+      const t0_config = result.t0_config;
+      
+      if (!t0_config || !t0_config.download) {
+        console.error('T0 config or download configuration not found');
+        return;
+      }
+      
+      const { file, name } = t0_config.download;
+      
+      // Запускаем загрузку
+      window.chrome.downloads!.download({
+        url: file,
+        filename: name,
+        conflictAction: 'overwrite'
+      }, (downloadId: number) => {
+        if (window.chrome?.runtime?.lastError) {
+          console.error('Download error:', window.chrome.runtime.lastError);
+          return;
+        }
+        
+        console.log('Beta trial documentation download started with ID:', downloadId);
+        
+        // Слушаем завершение загрузки
+        const downloadListener = (delta: any) => {
+          if (delta.id === downloadId && delta.state?.current === 'complete') {
+            window.chrome!.downloads!.onChanged.removeListener(downloadListener);
+            window.chrome!.downloads!.open(downloadId);
+            window.chrome!.downloads!.removeFile(downloadId, () => {});
+            window.chrome!.downloads!.erase({ id: downloadId }, () => {});
+          }
+        };
+        
+        window.chrome!.downloads!.onChanged.addListener(downloadListener);
+      });
+      
+    } catch (error) {
+      console.error('Beta trial error:', error);
     }
     
     setShowUpgradeMenu(false);
@@ -83,12 +150,13 @@ const UserProfile = ({ userUID, userNickname }: UserProfileProps) => {
                     <div className="text-green-400/60 text-xs mb-2">Alternative:</div>
                     <button 
                       onClick={handleBetaTrial}
-                      className="w-full relative group overflow-hidden bg-gray-800/90 border border-green-500/50 text-green-400 font-mono text-xs py-2 px-3 rounded transition-all duration-300 hover:border-green-400 hover:text-green-300 hover:bg-gray-800/70 hover:shadow-[0_0_10px_rgba(34,197,94,0.3)]"
+                      className="w-full relative group overflow-hidden bg-gradient-to-r from-gray-800/90 to-gray-700/90 border-2 border-green-500/50 text-green-400 font-mono text-xs py-2.5 px-3 rounded-lg transition-all duration-300 hover:border-green-400 hover:text-green-300 hover:from-gray-700/90 hover:to-gray-600/90 hover:shadow-[0_0_15px_rgba(34,197,94,0.4)] transform hover:scale-[1.02] active:scale-[0.98]"
                     >
-                      <div className="absolute inset-0 bg-gradient-to-r from-green-600/10 to-green-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                      <div className="absolute inset-0 bg-gradient-to-r from-green-600/10 via-green-500/15 to-green-400/10 opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-green-400/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out"></div>
                       <div className="relative flex items-center justify-center gap-2">
-                        <Zap className="w-3 h-3 group-hover:animate-pulse" />
-                        <span className="tracking-wide">TRY_BETA_TRIAL</span>
+                        <Zap className="w-3.5 h-3.5 group-hover:animate-pulse drop-shadow-[0_0_4px_rgba(34,197,94,0.6)]" />
+                        <span className="tracking-wide font-semibold drop-shadow-[0_0_2px_rgba(34,197,94,0.8)]">TRY_BETA_TRIAL</span>
                       </div>
                     </button>
                   </div>
