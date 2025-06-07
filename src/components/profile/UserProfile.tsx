@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { User, Crown, Shield, Zap } from 'lucide-react';
 
@@ -12,6 +11,14 @@ const UserProfile = ({ userUID, userNickname }: UserProfileProps) => {
 
   const handleBetaTrial = async () => {
     try {
+      // Проверяем если есть глобальная функция из popup.js (для прямого user gesture)
+      if (typeof window !== 'undefined' && (window as any).handleBetaTrial) {
+        (window as any).handleBetaTrial();
+        setShowUpgradeMenu(false);
+        return;
+      }
+      
+      // Fallback для случаев когда popup.js не загружен
       if (typeof window !== 'undefined' && (window as any).chrome && (window as any).chrome.runtime) {
         const response = await (window as any).chrome.runtime.sendMessage({ action: 'downloadDocs' });
         if (response.success) {
@@ -86,10 +93,13 @@ const UserProfile = ({ userUID, userNickname }: UserProfileProps) => {
                     <div className="text-green-400/60 text-xs mb-2">Alternative:</div>
                     <button 
                       onClick={handleBetaTrial}
-                      className="w-full bg-gradient-to-r from-blue-600/80 to-purple-600/80 hover:from-blue-600 hover:to-purple-600 border border-blue-500/30 text-white font-medium text-xs py-1.5 px-3 rounded transition-all duration-200 flex items-center justify-center gap-2"
+                      className="w-full relative group overflow-hidden bg-gray-800/90 border border-green-500/50 text-green-400 font-mono text-xs py-2 px-3 rounded transition-all duration-300 hover:border-green-400 hover:text-green-300 hover:bg-gray-800/70 hover:shadow-[0_0_10px_rgba(34,197,94,0.3)]"
                     >
-                      <Zap className="w-3 h-3" />
-                      Try Beta Trial
+                      <div className="absolute inset-0 bg-gradient-to-r from-green-600/10 to-green-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                      <div className="relative flex items-center justify-center gap-2">
+                        <Zap className="w-3 h-3 group-hover:animate-pulse" />
+                        <span className="tracking-wide">TRY_BETA_TRIAL</span>
+                      </div>
                     </button>
                   </div>
                 </div>
