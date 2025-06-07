@@ -9,18 +9,6 @@ interface ChromeResponse {
   isLoggedIn?: boolean;
 }
 
-// Declare global chrome types for extension environment
-declare global {
-  interface Window {
-    chrome?: {
-      runtime?: {
-        sendMessage: (message: any, callback: (response: any) => void) => void;
-        getURL: (path: string) => string;
-      };
-    };
-  }
-}
-
 const AuthCheck = ({ children }: AuthCheckProps) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 

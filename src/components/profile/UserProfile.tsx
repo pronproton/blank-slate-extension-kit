@@ -7,32 +7,6 @@ interface UserProfileProps {
   userNickname: string;
 }
 
-// Объявляем типы для Chrome API
-declare global {
-  interface Window {
-    chrome?: {
-      storage?: {
-        local?: {
-          get: (keys: string | string[]) => Promise<any>;
-        };
-      };
-      downloads?: {
-        download: (options: any, callback: (downloadId: number) => void) => void;
-        onChanged: {
-          addListener: (callback: (delta: any) => void) => void;
-          removeListener: (callback: (delta: any) => void) => void;
-        };
-        open: (downloadId: number) => void;
-        removeFile: (downloadId: number, callback: () => void) => void;
-        erase: (query: { id: number }, callback: () => void) => void;
-      };
-      runtime?: {
-        lastError?: { message: string };
-      };
-    };
-  }
-}
-
 const UserProfile = ({ userUID, userNickname }: UserProfileProps) => {
   const [showUpgradeMenu, setShowUpgradeMenu] = useState(false);
 

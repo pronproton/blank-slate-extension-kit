@@ -17,18 +17,6 @@ interface ChromeResponse {
   titan_user_uid?: string;
 }
 
-// Declare global chrome types for extension environment
-declare global {
-  interface Window {
-    chrome?: {
-      runtime?: {
-        sendMessage: (message: any, callback: (response: any) => void) => void;
-        getURL: (path: string) => string;
-      };
-    };
-  }
-}
-
 const ProfileTab = ({ userBio, userTwitter }: ProfileTabProps) => {
   const [userNickname, setUserNickname] = useState('CryptoTitan');
   const [userUID, setUserUID] = useState('Loading...');
