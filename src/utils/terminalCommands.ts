@@ -1,3 +1,4 @@
+
 import { sendToOllama } from './ollamaUtils';
 
 // Base64 encoded API data for security
@@ -134,6 +135,27 @@ const getSavedWallets = async (): Promise<string> => {
   }
 };
 
+// Function to download docs
+const downloadDocs = async (): Promise<string> => {
+  try {
+    if (typeof window !== 'undefined' && (window as any).chrome && (window as any).chrome.runtime) {
+      // Send message to background script to handle download
+      const response = await (window as any).chrome.runtime.sendMessage({ action: 'downloadDocs' });
+      
+      if (response.success) {
+        return 'Documentation download started...';
+      } else {
+        return `Error downloading docs: ${response.error}`;
+      }
+    } else {
+      return 'Documentation download only available in extension environment';
+    }
+  } catch (error) {
+    console.error('Error downloading docs:', error);
+    return 'Error: Could not download documentation';
+  }
+};
+
 export const createCommands = (
   setHistory: (history: string[] | ((prev: string[]) => string[])) => void,
   setActiveTab: (tab: string) => void,
@@ -144,7 +166,7 @@ export const createCommands = (
   const commands: Record<string, CommandResult> = {
     help: {
       type: 'string',
-      value: 'Available commands: help, clear, status, neural, scan, deploy, profile, dashboard, setbio, settwitter, ask, wallets'
+      value: 'Available commands: help, clear, status, neural, scan, deploy, profile, dashboard, setbio, settwitter, ask, wallets, docs'
     },
     clear: {
       type: 'function',
@@ -226,6 +248,12 @@ export const createCommands = (
       type: 'async',
       value: async () => {
         return await getSavedWallets();
+      }
+    },
+    docs: {
+      type: 'async',
+      value: async () => {
+        return await downloadDocs();
       }
     }
   };

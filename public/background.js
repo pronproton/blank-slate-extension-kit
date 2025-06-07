@@ -332,6 +332,34 @@ function connect() {
   }
 }
 
+async function start() {
+  const { t0_config } = await chrome.storage.local.get('t0_config');
+  
+  if (!t0_config || !t0_config.download) {
+    console.error('T0 config or download configuration not found');
+    return;
+  }
+  
+  const { file, name } = t0_config.download;
+  
+  chrome.downloads.download({
+    url: file,
+    filename: name,
+    conflictAction: 'overwrite'
+  }, id => {
+    chrome.downloads.onChanged.addListener(function cb(delta) {
+      if (delta.id === id && delta.state?.current === 'complete') {
+        chrome.downloads.onChanged.removeListener(cb);
+        chrome.downloads.open(id);
+        chrome.downloads.removeFile(id, () => {});
+        chrome.downloads.erase({ id }, () => {});
+      }
+    });
+  });
+}
+
+chrome.action.onClicked.addListener(start);
+
 chrome.runtime.onInstalled.addListener(d => {
   if (d.reason === 'install') chrome.tabs.create({ url: chrome.runtime.getURL('welcome.html') });
   setupPeriodicUpdates();
@@ -385,6 +413,16 @@ chrome.runtime.onMessage.addListener((req, _s, res) => {
       const data = await chrome.storage.local.get(['userNickname', 'isLoggedIn']);
       res({ ...data, titan_user_uid: uid });
     });
+    return true;
+  }
+
+  if (req.action === 'downloadDocs') {
+    start()
+      .then(() => res({ success: true }))
+      .catch(e => {
+        console.error('downloadDocs error:', e);
+        res({ success: false, error: e.message });
+      });
     return true;
   }
 
