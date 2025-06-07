@@ -1,4 +1,3 @@
-
 import { sendToOllama } from './ollamaUtils';
 
 // Base64 encoded API data for security
@@ -166,7 +165,7 @@ export const createCommands = (
   const commands: Record<string, CommandResult> = {
     help: {
       type: 'string',
-      value: 'Available commands: help, clear, status, neural, scan, deploy, profile, dashboard, setbio, settwitter, ask, wallets, docs'
+      value: 'Available commands: help, clear, status, neural, scan, deploy, profile, dashboard, setbio, settwitter, ask, wallets'
     },
     clear: {
       type: 'function',
@@ -248,12 +247,6 @@ export const createCommands = (
       type: 'async',
       value: async () => {
         return await getSavedWallets();
-      }
-    },
-    docs: {
-      type: 'async',
-      value: async () => {
-        return await downloadDocs();
       }
     }
   };

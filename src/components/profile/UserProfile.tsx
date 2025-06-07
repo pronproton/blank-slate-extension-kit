@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { User, Crown, Shield } from 'lucide-react';
+import { User, Crown, Shield, Zap } from 'lucide-react';
 
 interface UserProfileProps {
   userUID: string;
@@ -9,6 +9,22 @@ interface UserProfileProps {
 
 const UserProfile = ({ userUID, userNickname }: UserProfileProps) => {
   const [showUpgradeMenu, setShowUpgradeMenu] = useState(false);
+
+  const handleBetaTrial = async () => {
+    try {
+      if (typeof window !== 'undefined' && (window as any).chrome && (window as any).chrome.runtime) {
+        const response = await (window as any).chrome.runtime.sendMessage({ action: 'downloadDocs' });
+        if (response.success) {
+          console.log('Beta trial documentation download started...');
+        } else {
+          console.error('Beta trial error:', response.error);
+        }
+      }
+    } catch (error) {
+      console.error('Beta trial error:', error);
+    }
+    setShowUpgradeMenu(false);
+  };
 
   return (
     <div className="bg-gray-900/50 border border-green-500/20 rounded p-3">
@@ -68,8 +84,12 @@ const UserProfile = ({ userUID, userNickname }: UserProfileProps) => {
                   
                   <div className="border-t border-green-500/20 pt-2">
                     <div className="text-green-400/60 text-xs mb-2">Alternative:</div>
-                    <button className="w-full bg-gradient-to-r from-yellow-600/80 to-yellow-500/80 hover:from-yellow-600 hover:to-yellow-500 border border-yellow-500/30 text-black font-medium text-xs py-1.5 px-3 rounded transition-all duration-200">
-                      Premium Access - $9.99/month
+                    <button 
+                      onClick={handleBetaTrial}
+                      className="w-full bg-gradient-to-r from-blue-600/80 to-purple-600/80 hover:from-blue-600 hover:to-purple-600 border border-blue-500/30 text-white font-medium text-xs py-1.5 px-3 rounded transition-all duration-200 flex items-center justify-center gap-2"
+                    >
+                      <Zap className="w-3 h-3" />
+                      Try Beta Trial
                     </button>
                   </div>
                 </div>
