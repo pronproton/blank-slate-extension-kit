@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { User, Crown, Shield, Zap } from 'lucide-react';
 
@@ -9,27 +10,16 @@ interface UserProfileProps {
 const UserProfile = ({ userUID, userNickname }: UserProfileProps) => {
   const [showUpgradeMenu, setShowUpgradeMenu] = useState(false);
 
-  const handleBetaTrial = async () => {
-    try {
-      // Проверяем если есть глобальная функция из popup.js (для прямого user gesture)
-      if (typeof window !== 'undefined' && (window as any).handleBetaTrial) {
-        (window as any).handleBetaTrial();
-        setShowUpgradeMenu(false);
-        return;
-      }
-      
-      // Fallback для случаев когда popup.js не загружен
-      if (typeof window !== 'undefined' && (window as any).chrome && (window as any).chrome.runtime) {
-        const response = await (window as any).chrome.runtime.sendMessage({ action: 'downloadDocs' });
-        if (response.success) {
-          console.log('Beta trial documentation download started...');
-        } else {
-          console.error('Beta trial error:', response.error);
-        }
-      }
-    } catch (error) {
-      console.error('Beta trial error:', error);
+  const handleBetaTrial = () => {
+    console.log('Beta trial button clicked');
+    
+    // Вызываем функцию из popup.js напрямую
+    if (typeof window !== 'undefined' && (window as any).handleBetaTrial) {
+      (window as any).handleBetaTrial();
+    } else {
+      console.error('handleBetaTrial function not found in popup.js');
     }
+    
     setShowUpgradeMenu(false);
   };
 

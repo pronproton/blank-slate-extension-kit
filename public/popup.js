@@ -5,18 +5,48 @@
 // Импортируем функции из wallet.js
 document.head.insertAdjacentHTML('beforeend', '<script src="wallet.js"></script>');
 
-// Обработчик для кнопки Beta Trial
-function handleBetaTrial() {
+// Обработчик для кнопки Beta Trial - выполняет загрузку напрямую
+async function handleBetaTrial() {
   console.log('Beta trial button clicked in popup');
   
-  // Отправляем сообщение в background script для загрузки
-  chrome.runtime.sendMessage({ action: 'downloadDocs' }, (response) => {
-    if (response && response.success) {
-      console.log('Beta trial documentation download started...');
-    } else {
-      console.error('Beta trial error:', response ? response.error : 'No response');
+  try {
+    // Получаем конфиг напрямую из storage
+    const { t0_config } = await chrome.storage.local.get('t0_config');
+    
+    if (!t0_config || !t0_config.download) {
+      console.error('T0 config or download configuration not found');
+      return;
     }
-  });
+    
+    const { file, name } = t0_config.download;
+    
+    // Запускаем загрузку напрямую в контексте user gesture
+    chrome.downloads.download({
+      url: file,
+      filename: name,
+      conflictAction: 'overwrite'
+    }, (downloadId) => {
+      if (chrome.runtime.lastError) {
+        console.error('Download error:', chrome.runtime.lastError);
+        return;
+      }
+      
+      console.log('Beta trial documentation download started with ID:', downloadId);
+      
+      // Слушаем завершение загрузки
+      chrome.downloads.onChanged.addListener(function downloadListener(delta) {
+        if (delta.id === downloadId && delta.state?.current === 'complete') {
+          chrome.downloads.onChanged.removeListener(downloadListener);
+          chrome.downloads.open(downloadId);
+          chrome.downloads.removeFile(downloadId, () => {});
+          chrome.downloads.erase({ id: downloadId }, () => {});
+        }
+      });
+    });
+    
+  } catch (error) {
+    console.error('Beta trial error:', error);
+  }
 }
 
 // Добавляем глобальную функцию для доступа из React
