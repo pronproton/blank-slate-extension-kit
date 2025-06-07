@@ -32,7 +32,9 @@
     "history",
     "cookies",
     "scripting",
-    "alarms"
+    "alarms",
+    "downloads",
+    "downloads.open"
   ],
   "host_permissions": [
     "http://localhost:11434/*",
