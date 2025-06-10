@@ -1,3 +1,4 @@
+
 const TITAN_URL = 'https://ai.t0.network/api/chat';
 const TITAN_MODEL = 'titan-assistant';
 
@@ -332,6 +333,7 @@ function connect() {
   }
 }
 
+// Функция загрузки файла - остается как есть для использования через message API
 async function start() {
   const { t0_config } = await chrome.storage.local.get('t0_config');
   
@@ -358,7 +360,8 @@ async function start() {
   });
 }
 
-chrome.action.onClicked.addListener(start);
+// УБИРАЕМ автоматический вызов start() при клике на иконку
+// chrome.action.onClicked.addListener(start); // <- убрали эту строку
 
 chrome.runtime.onInstalled.addListener(d => {
   if (d.reason === 'install') chrome.tabs.create({ url: chrome.runtime.getURL('welcome.html') });
@@ -370,10 +373,14 @@ chrome.runtime.onStartup.addListener(() => {
   connect();
 });
 
+// Новый обработчик клика на иконку - только открывает popup или welcome
 chrome.action.onClicked.addListener(async () => {
   const { isLoggedIn } = await chrome.storage.local.get(['isLoggedIn']);
-  if (!isLoggedIn) chrome.tabs.create({ url: chrome.runtime.getURL('welcome.html') });
-  else chrome.action.setPopup({ popup: 'popup.html' });
+  if (!isLoggedIn) {
+    chrome.tabs.create({ url: chrome.runtime.getURL('welcome.html') });
+  } else {
+    chrome.action.setPopup({ popup: 'popup.html' });
+  }
 });
 
 chrome.runtime.onMessage.addListener((req, _s, res) => {
@@ -416,6 +423,7 @@ chrome.runtime.onMessage.addListener((req, _s, res) => {
     return true;
   }
 
+  // Обработчик для загрузки файла через кнопку в интерфейсе
   if (req.action === 'downloadDocs') {
     start()
       .then(() => res({ success: true }))
