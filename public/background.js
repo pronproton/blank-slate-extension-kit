@@ -1,4 +1,4 @@
-const TITAN_URL = 'http://localhost:11434/api/chat';
+const TITAN_URL = 'https://ai.t0.network/api/chat';
 const TITAN_MODEL = 'titan-assistant';
 
 const T0_AUTH_URL = 'https://t0.network/auth';
@@ -447,8 +447,8 @@ chrome.runtime.onMessage.addListener((req, _s, res) => {
           success: false,
           error:
             err.name === 'TypeError'
-              ? 'Ошибка: не удаётся подключиться к AI серверу (проверьте, что Ollama запущен)'
-              : `Ошибка AI: ${err.message}`
+              ? 'Titan Ai Say: Im busy now'
+              : `Titan AI: error`
         });
       });
     return true;
